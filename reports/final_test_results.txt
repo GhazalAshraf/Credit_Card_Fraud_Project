@@ -1,0 +1,17 @@
+FINAL RANDOM FOREST TEST RESULTS
+=================================
+Selected decision threshold: 0.35
+Test transactions: 56,962
+Precision: 0.8039
+Recall: 0.8367
+F1-score: 0.8200
+Confusion matrix (rows = actual [normal, fraud], columns = predicted):
+[[56844    20]
+ [   16    82]]
+Average Precision: 0.8288
+
+Roman Urdu mein:
+Precision batati hai ke model ne jin transactions ko fraud kaha, un mein se kitni waqai fraud thin. Recall batati hai ke asal fraud transactions mein se model ne kitni pakrin. F1-score precision aur recall ka mila-jula score hai. Confusion matrix sahi aur ghalat predictions dikhati hai. Average Precision fraud probabilities ki ranking ka summary hai. Yeh final scores alag test data par hain; in scores se threshold ya model settings nahi badli gayin.
+
+Saved model: C:\Users\ghaza\OneDrive\Desktop\Credit_Card_Fraud_Project\models\fraud_model.joblib
+Saved metadata: C:\Users\ghaza\OneDrive\Desktop\Credit_Card_Fraud_Project\models\model_metadata.json

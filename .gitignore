@@ -1,0 +1,23 @@
+# Local dataset
+/data/creditcard.csv
+/samples/*.csv
+# ZIP backups
+*.zip
+
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+
+# Environment files and secrets
+.env
+.env.*
+*.env
+.streamlit/secrets.toml
+**/.streamlit/secrets.toml
+credentials
+credentials.*
+*_credentials.*
+credentials/
+**/credentials/
+*.pem
+*.key

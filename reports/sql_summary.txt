@@ -1,0 +1,24 @@
+SQL FRAUD ANALYSIS SUMMARY
+==========================
+
+Overall transaction counts (Class 0 = normal, Class 1 = fraud):
+Total transactions: 284,807
+Normal transactions: 284,315
+Fraud transactions: 492
+Fraud percentage: 0.173%
+
+Average transaction amount by class:
+Normal (Class 0): 284,315 transactions; average amount 88.29
+Fraud (Class 1): 492 transactions; average amount 122.21
+
+Fraud by transaction amount range:
+Range | All transactions | Fraud transactions | Fraud rate
+Under 50 | 189,704 | 305 | 0.161%
+50 to under 100 | 37,718 | 57 | 0.151%
+100 to under 500 | 47,893 | 95 | 0.198%
+500 and above | 9,492 | 35 | 0.369%
+
+Asaan Roman Urdu mein:
+COUNT(*) tamam transactions ko ginta hai. CASE WHEN Class = 0 ya 1 normal aur fraud transactions ko alag ginta hai. Fraud percentage fraud transactions ko total transactions se divide karke 100 se multiply karti hai.
+AVG(Amount) har class ki ausat transaction raqam nikalta hai. Amount ranges wali query har range mein total aur fraud transactions ginti hai, phir us range ka fraud rate percentage nikalti hai.
+Yeh report CSV se SQL ke zariye chalaye gaye asal calculations dikhati hai.

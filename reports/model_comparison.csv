@@ -1,0 +1,3 @@
+model,threshold,precision,recall,f1_score,confusion_matrix,average_precision
+Logistic Regression,0.9900,0.5643,0.7980,0.6611,"[[56802, 61], [20, 79]]",0.6807
+Random Forest,0.3500,0.8851,0.7778,0.8280,"[[56853, 10], [22, 77]]",0.7758
