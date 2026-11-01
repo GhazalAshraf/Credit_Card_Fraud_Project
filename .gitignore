@@ -1,6 +1,7 @@
 # Local dataset
 /data/creditcard.csv
 /samples/*.csv
+!/samples/test_transactions.csv
 # ZIP backups
 *.zip
 

@@ -10,12 +10,17 @@ import streamlit as st
 
 
 PROJECT_FOLDER = Path(__file__).parent
-DATA_FILE = PROJECT_FOLDER / "data" / "creditcard.csv"
+SUMMARY_FILE = PROJECT_FOLDER / "reports" / "sql_summary.txt"
+SAMPLE_FILE = PROJECT_FOLDER / "samples" / "test_transactions.csv"
 CHARTS = [
-    ("Fraud transaction counts", "fraud_distribution.png"),
-    ("Transaction amount distribution", "amount_distribution.png"),
-    ("Normal and fraud class distribution", "class_pie_chart.png"),
-    ("Transaction time distribution", "time_distribution.png"),
+    ("Normal vs. fraud transaction counts", "fraud_distribution.png"),
+    ("Transaction amounts: normal vs. fraud", "amount_distribution.png"),
+    ("Transactions and fraud rate by hour", "time_distribution.png"),
+]
+EVALUATION_CHARTS = [
+    ("Precision-recall curve", "precision_recall_curve.png"),
+    ("Confusion matrix", "confusion_matrix.png"),
+    ("Top 10 features", "feature_importance.png"),
 ]
 RESULTS_FILE = PROJECT_FOLDER / "reports" / "final_test_results.txt"
 MODEL_FILE = PROJECT_FOLDER / "models" / "fraud_model.joblib"
@@ -77,16 +82,19 @@ def show_fraud_prediction():
     st.subheader("Fraud Prediction")
     st.write(
         "Upload a CSV containing the same transaction features used to train "
-        "the saved model. The file is analyzed locally by this app."
+        "the saved model, and each transaction is scored by the Random Forest."
     )
-    st.warning(
-        "Predictions are statistical risk estimates, not proof that a "
-        "transaction is fraudulent."
+    st.info(
+        "Each transaction receives a fraud risk score from 0% to 100%, so the "
+        "riskiest transactions can be prioritised for review."
     )
 
     uploaded_file = st.file_uploader(
         "Choose a transaction CSV file", type=["csv"], key="fraud_prediction_csv"
     )
+    if uploaded_file is None and SAMPLE_FILE.is_file():
+        if st.toggle("Try it with sample transactions from the held-out test set"):
+            uploaded_file = SAMPLE_FILE
     if uploaded_file is None:
         st.info("Choose a CSV file to begin. The required feature names are read from the saved model metadata.")
         return
@@ -193,7 +201,7 @@ def show_fraud_prediction():
     st.subheader("Prediction Results")
     st.dataframe(
         results,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "fraud_risk_score": st.column_config.NumberColumn(
@@ -241,15 +249,25 @@ def show_model_performance():
     if threshold:
         st.write(f"**Selected decision threshold:** {threshold}")
 
-    confusion_start = report_text.find(
-        "Confusion matrix (rows = actual [normal, fraud], columns = predicted):"
-    )
-    if confusion_start >= 0:
-        confusion_lines = report_text[confusion_start:].splitlines()
-        matrix_lines = confusion_lines[1:3]
-        if matrix_lines:
-            st.write("**Confusion matrix** — rows are actual classes; columns are predictions.")
-            st.code("\n".join(matrix_lines), language="text")
+    show_chart_grid(EVALUATION_CHARTS)
+
+
+def show_chart_grid(charts):
+    for row_start in range(0, len(charts), 2):
+        columns = st.columns(2)
+        for column, (title, filename) in zip(
+            columns, charts[row_start : row_start + 2]
+        ):
+            chart_file = PROJECT_FOLDER / "charts" / filename
+            with column:
+                st.markdown(f"**{title}**")
+                if chart_file.is_file():
+                    st.image(str(chart_file), width="stretch")
+                else:
+                    st.warning(
+                        f"Chart not found: `charts/{filename}`. "
+                        "Create the chart first, then refresh this page."
+                    )
 
 
 def main():
@@ -269,42 +287,31 @@ def main():
             label_visibility="collapsed",
         )
         st.divider()
-        st.caption("Local project dashboard")
+        st.caption("Built with Python, scikit-learn and Streamlit")
 
     if selected_page == "Fraud Prediction":
         show_fraud_prediction()
         return
 
-    if not DATA_FILE.is_file():
+    if not SUMMARY_FILE.is_file():
         st.error(
-            "Dataset file not found. Make sure `data/creditcard.csv` exists "
-            "inside the project folder."
+            "Dataset summary not found. Run `python sql_analysis.py` to create "
+            "`reports/sql_summary.txt`."
         )
         return
 
-    try:
-        data = pd.read_csv(DATA_FILE)
-    except (OSError, pd.errors.ParserError, UnicodeDecodeError) as error:
-        st.error(f"Could not read the dataset: {error}")
-        return
-
-    if "Class" not in data.columns:
-        st.error("The dataset is missing the required `Class` column.")
-        return
-
-    total_transactions = len(data)
-    fraud_transactions = int((data["Class"] == 1).sum())
-    normal_transactions = int((data["Class"] == 0).sum())
-    fraud_percentage = (
-        fraud_transactions / total_transactions * 100 if total_transactions else 0
-    )
+    summary_text = SUMMARY_FILE.read_text(encoding="utf-8")
+    overview_metrics = [
+        "Total transactions",
+        "Normal transactions",
+        "Fraud transactions",
+        "Fraud percentage",
+    ]
 
     st.subheader("Overview")
-    kpi_columns = st.columns(4)
-    kpi_columns[0].metric("Total transactions", f"{total_transactions:,}")
-    kpi_columns[1].metric("Normal transactions", f"{normal_transactions:,}")
-    kpi_columns[2].metric("Fraud transactions", f"{fraud_transactions:,}")
-    kpi_columns[3].metric("Fraud percentage", f"{fraud_percentage:.3f}%")
+    kpi_columns = st.columns(len(overview_metrics))
+    for column, name in zip(kpi_columns, overview_metrics):
+        column.metric(name, read_metric(summary_text, name) or "N/A")
 
     st.info(
         "This dataset is highly imbalanced: normal transactions greatly "
@@ -313,21 +320,7 @@ def main():
     )
 
     st.subheader("Exploratory Data Charts")
-    for row_start in range(0, len(CHARTS), 2):
-        columns = st.columns(2)
-        for column, (title, filename) in zip(
-            columns, CHARTS[row_start : row_start + 2]
-        ):
-            chart_file = PROJECT_FOLDER / "charts" / filename
-            with column:
-                st.markdown(f"**{title}**")
-                if chart_file.is_file():
-                    st.image(str(chart_file), use_container_width=True)
-                else:
-                    st.warning(
-                        f"Chart not found: `charts/{filename}`. "
-                        "Create the chart first, then refresh this page."
-                    )
+    show_chart_grid(CHARTS)
 
     st.divider()
     show_model_performance()

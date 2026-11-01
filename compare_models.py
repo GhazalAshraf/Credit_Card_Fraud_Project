@@ -138,16 +138,7 @@ def main():
     )
 
     best_f1_model = comparison.loc[comparison["f1_score"].idxmax(), "model"]
-    print(f"\nValidation par sab se zyada F1-score: {best_f1_model}")
-    print(
-        "Roman Urdu: Threshold barhane se aam tor par fraud ka ghalat alarm kam "
-        "ho sakta hai (precision barh sakti hai), lekin kuch asal fraud miss "
-        "ho sakte hain (recall kam ho sakta hai). Har model ke liye 0.01 se "
-        "0.99 tak validation thresholds check kiye gaye; table mein us model "
-        "ka threshold hai jis par F1-score sab se zyada tha. Average Precision "
-        "probabilities ke overall ranking ko summarize karti hai. Test data "
-        "bilkul evaluate nahi hua."
-    )
+    print(f"\nHighest validation F1-score: {best_f1_model}")
     print(f"\nComparison saved to: {comparison_file}")
 
 

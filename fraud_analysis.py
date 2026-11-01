@@ -5,6 +5,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import StrMethodFormatter
 import pandas as pd
 
 
@@ -36,8 +37,10 @@ def main():
 
     axis.set_title("Normal vs. Fraudulent Transactions", fontsize=15, pad=18)
     axis.set_ylabel("Number of transactions")
-    axis.set_ylim(0, max(counts, default=0) * 1.12)
-    axis.grid(axis="y", linestyle="--", alpha=0.35)
+    # Leave headroom so the bar labels and the note below do not overlap.
+    axis.set_ylim(0, max(counts, default=0) * 1.3)
+    axis.yaxis.set_major_formatter(StrMethodFormatter("{x:,.0f}"))
+    axis.grid(axis="y", color="#E5E7EB", linewidth=0.8)
     axis.set_axisbelow(True)
     axis.spines["top"].set_visible(False)
     axis.spines["right"].set_visible(False)
@@ -46,12 +49,13 @@ def main():
     axis.text(
         0.5,
         0.96,
-        "Highly imbalanced dataset: fraud transactions are rare.",
+        f"Fraud makes up {fraud_percentage:.3f}% of all transactions.",
         transform=axis.transAxes,
         ha="center",
         va="top",
         fontsize=10,
         color="#4B5563",
+        bbox={"facecolor": "white", "edgecolor": "none"},
     )
 
     figure.tight_layout()

@@ -1,297 +1,202 @@
 # Credit Card Fraud Detection & Analytics Dashboard
 
-A local data analytics and machine learning portfolio project for exploring
-credit card transactions, analyzing fraud patterns with SQL, comparing
-classification models, and reviewing transaction risk estimates in a Streamlit
-dashboard.
+An end-to-end fraud detection project on **284,807 real card transactions**:
+exploratory analysis, SQL fraud analytics, machine learning model comparison
+with a tuned decision threshold, and an interactive **Streamlit dashboard**
+that scores transaction files and returns a fraud risk score for every row.
 
-## Project Overview
+## Results at a Glance
 
-The project combines exploratory data analysis, SQL-based summaries, supervised
-machine learning, and a local dashboard. The saved Random Forest model can score
-uploaded transaction CSV files and label each row as Normal or Fraud using a
-validation-selected decision threshold.
+The final Random Forest was evaluated on a held-out test set of **56,962
+transactions** that played no part in training or model selection.
 
-The dashboard's predictions are statistical risk estimates. They are not proof
-that a transaction is fraudulent and should not be treated as an automated
-financial decision.
+| Metric | Test result |
+|---|---:|
+| Precision | **0.8039** |
+| Recall | **0.8367** |
+| F1-score | **0.8200** |
+| Average Precision (PR-AUC) | **0.8288** |
 
-## Business Problem
+The model caught **82 of the 98 fraud cases** in the test set while flagging
+only **20 of 56,864 normal transactions** (0.04%).
 
-Card fraud is difficult to identify because fraudulent transactions are rare
-compared with normal transactions. A useful fraud detection workflow must
-identify as many fraud cases as possible while also considering false alarms.
-This project explores that challenge and presents model performance using
-precision, recall, F1-score, Average Precision, and a confusion matrix.
+| | Predicted normal | Predicted fraud |
+|---|---:|---:|
+| **Actual normal** | 56,844 | 20 |
+| **Actual fraud** | 16 | 82 |
+
+![Precision-recall curve on test data](charts/precision_recall_curve.png)
+
+## Highlights
+
+- **Rigorous evaluation:** stratified 60/20/20 train/validation/test split.
+  Model choice and decision threshold were selected on validation data, and
+  the test set was scored once at the end.
+- **Built for imbalanced data:** fraud is only 0.173% of transactions, so the
+  models use class weighting and are judged on precision, recall, F1 and
+  Average Precision.
+- **Threshold tuning:** thresholds from 0.01 to 0.99 were compared on
+  validation data to find the best balance of precision and recall (0.35).
+- **SQL analytics:** fraud rates by class and amount range, calculated with
+  SQLite.
+- **Interactive dashboard:** upload a CSV (or use the built-in sample) to get
+  a risk score and predicted class for each transaction, with input
+  validation and a downloadable results file.
 
 ## Dataset
 
-Place the dataset at:
-
-```text
-data/creditcard.csv
-```
-
-The project uses the
-[Credit Card Fraud Detection dataset on Kaggle](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud).
-The dataset contains **284,807 transactions**, including **284,315 normal
-transactions** and **492 fraud cases**. The `Class` column is the target:
-`0` means normal and `1` means fraud. Features include `Time`, `Amount`, and
-anonymized variables `V1` through `V28`.
-
-The dataset is highly imbalanced: fraud represents approximately **0.173%** of
-all transactions. Keep the original CSV in `data/`; the analysis and prediction
-scripts read it but do not modify it.
-
-## Technologies Used
-
-- Python
-- Pandas and NumPy
-- Matplotlib
-- SQLite through Python's built-in `sqlite3` library
-- scikit-learn
-- joblib
-- Streamlit
+[Credit Card Fraud Detection dataset (Kaggle)](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud):
+284,807 transactions, of which 492 are fraud (0.173%). Features are `Time`,
+`Amount` and 28 anonymised PCA components `V1`–`V28`. The target column
+`Class` is `1` for fraud and `0` for normal.
 
 ## Exploratory Data Analysis
 
-The analysis scripts inspect dataset dimensions, sample rows, missing values,
-class counts, and summary statistics. The charts are saved in `charts/`:
+![Normal vs. fraudulent transactions](charts/fraud_distribution.png)
 
-- `fraud_distribution.png` compares normal and fraud transaction counts.
-- `amount_distribution.png` shows the transaction amount distribution.
-- `class_pie_chart.png` shows the class proportions.
-- `time_distribution.png` shows the transaction time distribution.
+![Transaction amounts: normal vs. fraud](charts/amount_distribution.png)
 
-`fraud_analysis.py` reports transaction counts and the fraud percentage.
-`eda_charts.py` generates the amount, class, and time charts.
+Fraud is concentrated in very small amounts: **36.8% of fraudulent
+transactions are for 1.00 or less**, compared with 10.7% of normal
+transactions.
+
+![Transactions and fraud rate by hour](charts/time_distribution.png)
+
+Transaction volume follows a clear day/night cycle, and fraud stands out
+overnight: the hourly fraud rate peaks at **2.05%, about 12 times the overall
+rate**, and the three highest-rate hours all fall in the overnight
+low-volume periods.
 
 ## SQL Analysis
 
-`sql_analysis.py` loads the CSV into an in-memory SQLite table named
-`transactions` and runs SQL queries defined in the Python script. It also saves
-a copy of those queries to `sql/fraud_queries.sql`. The queries calculate:
+`sql_analysis.py` loads the data into SQLite and runs the queries saved in
+[`sql/fraud_queries.sql`](sql/fraud_queries.sql). Key findings
+([full report](reports/sql_summary.txt)):
 
-- Total, normal, and fraud transaction counts and the overall fraud percentage.
-- Average transaction amount for each class.
-- Fraud counts and fraud rates in four transaction amount ranges.
+- Fraudulent transactions average **122.21**, about **38% higher** than
+  normal transactions (88.29).
+- Transactions of **500 and above** have the highest fraud rate, **more than
+  twice** the rate of transactions under 100.
 
-The calculated report is saved to `reports/sql_summary.txt`. In this dataset,
-the report shows an average amount of 88.29 for normal transactions and 122.21
-for fraud transactions. The highest of the four reported range-level fraud
-rates is 0.369% for transactions of 500 and above. These are descriptive
-summaries, not evidence that amount alone causes or predicts fraud.
+| Amount range | Transactions | Fraud | Fraud rate |
+|---|---:|---:|---:|
+| Under 50 | 189,704 | 305 | 0.161% |
+| 50 to under 100 | 37,718 | 57 | 0.151% |
+| 100 to under 500 | 47,893 | 95 | 0.198% |
+| 500 and above | 9,492 | 35 | **0.369%** |
 
-## Machine Learning Models
+## Machine Learning
 
-The project trains and compares two models:
+Two models were trained on the same split and compared on validation data,
+each at its best F1 threshold:
 
-- **Logistic Regression** uses a scikit-learn Pipeline with
-  `StandardScaler` and `LogisticRegression(class_weight="balanced",
-  max_iter=1000)`.
-- **Random Forest** uses 100 trees, `max_depth=12`,
-  `class_weight="balanced_subsample"`, `random_state=42`, and `n_jobs=2`.
-  Scaling is not applied to Random Forest.
+| Model | Threshold | Precision | Recall | F1-score | Average Precision |
+|---|---:|---:|---:|---:|---:|
+| Logistic Regression | 0.99 | 0.5643 | 0.7980 | 0.6611 | 0.6807 |
+| **Random Forest** | **0.35** | **0.8851** | 0.7778 | **0.8280** | **0.7758** |
 
-The data is split reproducibly and stratified: 60% for training, 20% for
-validation, and 20% held out for final testing. Stratification preserves the
-rare fraud class across the splits. The validation data is used for model
-comparison and decision-threshold selection. The final test partition is kept
-out of those decisions.
+**Random Forest was selected** for its higher F1-score and Average Precision.
 
-`compare_models.py` compares the models on validation data and searches
-thresholds from 0.01 to 0.99 for the highest validation F1-score. The saved
-Random Forest uses the selected threshold **0.35**. The model and metadata are
-stored in `models/fraud_model.joblib` and `models/model_metadata.json`.
+- **Logistic Regression:** scikit-learn Pipeline with `StandardScaler` and
+  `LogisticRegression(class_weight="balanced", max_iter=1000)`.
+- **Random Forest:** 100 trees, `max_depth=12`,
+  `class_weight="balanced_subsample"`, `random_state=42`.
 
-## Model Evaluation
+The final model and its metadata (feature order and threshold) are saved in
+`models/` and loaded by the dashboard.
 
-The final held-out test results recorded in
-`reports/final_test_results.txt`, at decision threshold **0.35**, are:
+### Model Evaluation
 
-| Metric | Held-out test result |
-|---|---:|
-| Precision | 0.8039 |
-| Recall | 0.8367 |
-| F1-score | 0.8200 |
-| Average Precision | 0.8288 |
+![Confusion matrix on test data](charts/confusion_matrix.png)
 
-The test confusion matrix, with rows as actual classes `[normal, fraud]` and
-columns as predicted classes, is:
+![Top 10 features in the Random Forest](charts/feature_importance.png)
+
+`V14` is the strongest fraud signal (18.5% of total feature importance),
+followed by `V10` (11.1%) and `V12` (9.5%).
+
+## Dashboard
 
 ```text
-[[56844    20]
- [   16    82]]
+python -m streamlit run app.py
 ```
 
-These metrics are from the held-out test partition and were calculated once
-after selecting the model and threshold with validation data. They are not
-results from the sample CSV upload demonstration.
+- **Overview:** dataset KPIs, EDA charts, the final test metrics and the
+  model evaluation charts.
+- **Fraud Prediction:** upload a transaction CSV to get a fraud risk score
+  and predicted class for each row, plus a downloadable results CSV.
+- **Built-in sample:** one switch scores 196 held-out test transactions
+  (all 98 test fraud cases plus 98 normal transactions). The model flags
+  82 of the 98 fraud cases and none of the normal transactions.
 
-The validation model comparison is recorded in
-`reports/model_comparison.csv`. For Random Forest, the validation-selected
-threshold was 0.35 and the validation F1-score was 0.8280. Validation results
-are separate from the final test results above.
+Uploaded files need the feature columns listed in
+[`models/model_metadata.json`](models/model_metadata.json). Columns are
+reordered automatically, an optional `Class` column is ignored, and missing,
+non-numeric or infinite values are reported with clear messages.
 
-## Dashboard Features
+## Run Locally
 
-Run the local Streamlit app to access:
-
-- An Overview page with total, normal, and fraud transaction counts and fraud
-  percentage.
-- The four saved EDA charts and a short explanation of class imbalance.
-- Model Performance metrics read from the saved final test report.
-- A Fraud Prediction page for uploading transaction CSV files.
-- Per-row fraud risk scores, predicted classes, prediction totals, and a
-  downloadable results CSV.
-
-For prediction uploads, the CSV must contain the feature columns listed in
-`models/model_metadata.json`. The app uses that metadata to restore the
-expected feature order and threshold. An optional `Class` column is discarded
-as an input feature. Extra columns are rejected. Risk scores are predictions,
-not confirmed fraud labels.
-
-### Try the Sample Upload
-
-The sample is created from **real rows in the supplied dataset**, not generated
-fake data. The `create_sample.py` script selects five normal and five fraud
-transactions with `random_state=42`, removes `Class`, and saves the input
-features to `samples/test_transactions.csv`.
-
-1. If the sample file does not exist, run `python create_sample.py` from the
-   project folder.
-2. Start the dashboard using the command in Local Setup Instructions.
-3. Choose **Fraud Prediction** in the sidebar and upload
-   `samples/test_transactions.csv`.
-4. Review the predictions and use **Download predictions as CSV** to save them.
-
-This sample is only for checking the upload and prediction workflow. Its rows
-come from the original dataset, so its predictions are a demonstration and
-must not be presented as an independent or unbiased accuracy evaluation.
-
-## Local Setup Instructions
-
-1. Install Python and open this project folder in VS Code.
-2. Ensure the Kaggle dataset file is located at `data/creditcard.csv`.
-3. Open **Terminal → New Terminal** in VS Code. Confirm that the terminal is
-   showing the project folder (the folder containing `app.py`).
-4. Install the listed third-party packages into the Python installation you
-   intend to use:
-
-   ```text
-   python -m pip install -r requirements.txt
-   ```
-
-   This project setup does not require a virtual environment. Python's built-in
-   `sqlite3`, `pathlib`, `json`, and other standard-library modules are not listed
-   in `requirements.txt` because they do not need a separate package install.
-5. Start the dashboard from the project folder:
-
-   ```text
-   python -m streamlit run app.py
-   ```
-
-Streamlit opens the local dashboard in a browser. In the sidebar, select
-**Fraud Prediction**, upload a CSV with the model's transaction feature columns,
-review the risk scores and predicted classes, then select **Download predictions
-as CSV** to save the results. The optional `Class` column is not used as an
-input.
-
-To create the project's 10-row upload demonstration file if it is missing, run
-this command from the project folder:
+Requires **Python 3.12 or newer** (tested on Python 3.13).
 
 ```text
-python create_sample.py
+python -m pip install -r requirements.txt
+python -m streamlit run app.py
 ```
 
-Then upload `samples/test_transactions.csv` on the Fraud Prediction page. This
-file contains five normal and five fraud rows selected from the source dataset.
-It is for checking the upload/prediction workflow only; it is not an independent
-evaluation and must not be used to report model accuracy. The held-out test
-metrics in `reports/final_test_results.txt` are a separate evaluation.
+The dashboard runs from the saved model and reports, so the dataset is only
+needed to reproduce the analysis.
 
-To run other analysis scripts from the project folder, use `python` followed by
-the script name, for example `python sql_analysis.py` or
-`python compare_models.py`. The model training/evaluation scripts can overwrite
-their generated model and report files when run.
+## Reproduce the Analysis
 
-`requirements.txt` lists package names without version pins. Exact compatible
-versions and a Python version range have not been verified or locked for this
-project, so installing the requirements may produce different environments on
-different machines. The saved scikit-learn model may also depend on compatible
-package versions when loading.
+Download the dataset to `data/creditcard.csv`, then run the scripts in order:
 
-The project is intended to run locally; these instructions do not deploy or
-publish it.
+| Step | Script | Output |
+|---:|---|---|
+| 1 | `explore_data.py` | Dataset shape, missing values and class counts |
+| 2 | `fraud_analysis.py` | `charts/fraud_distribution.png` |
+| 3 | `eda_charts.py` | `charts/amount_distribution.png`, `charts/time_distribution.png` |
+| 4 | `sql_analysis.py` | `reports/sql_summary.txt`, `sql/fraud_queries.sql` |
+| 5 | `train_model.py` | `reports/threshold_comparison.csv` (Logistic Regression threshold sweep) |
+| 6 | `compare_models.py` | `reports/model_comparison.csv` |
+| 7 | `finalize_model.py` | `models/`, `reports/final_test_results.txt` |
+| 8 | `evaluation_charts.py` | `charts/precision_recall_curve.png`, `charts/confusion_matrix.png`, `charts/feature_importance.png` |
+| 9 | `create_sample.py` | `samples/test_transactions.csv` (196 held-out test transactions) |
 
 ## Project Structure
 
 ```text
 Credit_Card_Fraud_Project/
-├── app.py
-├── compare_models.py
-├── create_sample.py
-├── eda_charts.py
-├── explore_data.py
-├── finalize_model.py
-├── fraud_analysis.py
+├── app.py                  # Streamlit dashboard
+├── explore_data.py         # Initial data checks
+├── fraud_analysis.py       # Class balance chart
+├── eda_charts.py           # Amount and time charts
+├── sql_analysis.py         # SQLite fraud analytics
+├── train_model.py          # Logistic Regression baseline + threshold sweep
+├── compare_models.py       # Logistic Regression vs. Random Forest
+├── finalize_model.py       # Final model, test evaluation, saved artefacts
+├── evaluation_charts.py    # Precision-recall, confusion matrix, feature importance
+├── create_sample.py        # Dashboard sample from the held-out test set
 ├── requirements.txt
-├── sql_analysis.py
-├── train_model.py
 ├── charts/
-│   ├── amount_distribution.png
-│   ├── class_pie_chart.png
-│   ├── fraud_distribution.png
-│   └── time_distribution.png
-├── data/
-│   └── creditcard.csv
-├── models/
-│   ├── fraud_model.joblib
-│   └── model_metadata.json
-├── reports/
-│   ├── final_test_results.txt
-│   ├── model_comparison.csv
-│   ├── sql_summary.txt
-│   └── threshold_comparison.csv
-├── samples/
-│   └── test_transactions.csv
-└── sql/
-    └── fraud_queries.sql
+├── data/                   # creditcard.csv (download from Kaggle)
+├── models/                 # fraud_model.joblib, model_metadata.json
+├── reports/                # SQL summary, model comparison, test results
+├── samples/                # test_transactions.csv
+└── sql/                    # fraud_queries.sql
 ```
 
-## Key Insights
+## Tech Stack
 
-- The dataset has a severe class imbalance: 492 fraud cases among 284,807
-  transactions.
-- On the held-out test set at threshold 0.35, the Random Forest achieved
-  precision 0.8039 and recall 0.8367.
-- The SQL summary reports different average transaction amounts for the two
-  classes, but amount-range fraud rates remain below 0.4% in each reported
-  range.
-- The decision threshold represents a trade-off: changing it can affect
-  precision and recall in different directions.
+Python · pandas · NumPy · Matplotlib · SQLite · scikit-learn · joblib ·
+Streamlit
 
-## Limitations
+## Next Steps
 
-- The transaction features `V1` through `V28` are anonymized, which limits
-  domain interpretation.
-- The dataset is highly imbalanced, and performance on this historical dataset
-  may not generalize to other time periods, institutions, or fraud patterns.
-- The sample upload file is selected from the same source dataset and is only a
-  functional demonstration.
-- A predicted risk score does not confirm fraud. Real-world use would need
-  appropriate human review, monitoring, and operational safeguards.
-- The reported test scores describe this particular held-out split; they do
-  not guarantee future performance.
+- Time-based validation: train on earlier transactions and test on later ones.
+- Benchmark gradient boosting models (XGBoost, LightGBM).
+- Choose the decision threshold by business cost, using transaction amounts.
+- Add SHAP explanations for individual risk scores.
+- Add automated tests for the upload validation.
 
-## Future Improvements
+## Author
 
-Possible future work includes:
-
-- Add a time-aware evaluation to investigate performance on newer transactions.
-- Track model performance and recalibrate the decision threshold as data
-  changes.
-- Add model interpretability and clearer explanations for individual risk
-  estimates.
-- Expand dashboard filtering and summary visualizations.
-- Add automated tests for data validation and prediction behavior.
+**Ghazal Ashraf** · [GitHub](https://github.com/GhazalAshraf)

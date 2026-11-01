@@ -95,23 +95,13 @@ def main():
             "Confusion matrix (rows = actual [normal, fraud], columns = predicted):",
             str(matrix),
             f"Average Precision: {average_precision:.4f}",
-            "",
-            "Roman Urdu mein:",
-            "Precision batati hai ke model ne jin transactions ko fraud kaha, "
-            "un mein se kitni waqai fraud thin. Recall batati hai ke asal fraud "
-            "transactions mein se model ne kitni pakrin. F1-score precision "
-            "aur recall ka mila-jula score hai. Confusion matrix sahi aur ghalat "
-            "predictions dikhati hai. Average Precision fraud probabilities ki "
-            "ranking ka summary hai. Yeh final scores alag test data par hain; "
-            "in scores se threshold ya model settings nahi badli gayin.",
-            "",
-            f"Saved model: {model_file}",
-            f"Saved metadata: {metadata_file}",
         ]
     ) + "\n"
     report_file.write_text(report, encoding="utf-8")
 
     print(report, end="")
+    print(f"\nSaved model: {model_file}")
+    print(f"Saved metadata: {metadata_file}")
     print(f"Test results saved to: {report_file}")
 
 

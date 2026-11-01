@@ -109,20 +109,6 @@ def build_report(connection):
             f"{format_count(fraud_count)} | {rate_text}"
         )
 
-    lines.extend(
-        [
-            "",
-            "Asaan Roman Urdu mein:",
-            "COUNT(*) tamam transactions ko ginta hai. CASE WHEN Class = 0 ya 1 "
-            "normal aur fraud transactions ko alag ginta hai. Fraud percentage "
-            "fraud transactions ko total transactions se divide karke 100 se "
-            "multiply karti hai.",
-            "AVG(Amount) har class ki ausat transaction raqam nikalta hai. "
-            "Amount ranges wali query har range mein total aur fraud transactions "
-            "ginti hai, phir us range ka fraud rate percentage nikalti hai.",
-            "Yeh report CSV se SQL ke zariye chalaye gaye asal calculations dikhati hai.",
-        ]
-    )
     return "\n".join(lines) + "\n"
 
 
